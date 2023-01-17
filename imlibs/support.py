@@ -1,0 +1,2 @@
+
+IMAGES = ['jpg', 'jpeg', 'png']
