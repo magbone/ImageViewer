@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QRect, Qt, QEvent, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QApplication, QHBoxLayout, QGridLayout, QPushButton, QScrollArea, QFileDialog, QInputDialog, QMenu, QMenuBar, QMessageBox, QLineEdit
-from PyQt5.QtGui import QResizeEvent, QKeyEvent
+from PyQt5.QtGui import QResizeEvent, QKeyEvent, QNativeGestureEvent
 
 from .resource import ImageResourceManagerWrapper
 from .widgets import ImageView, ConfigEditDialog
@@ -79,11 +79,13 @@ class MainWindow(QWidget):
         self.prev_image = QPushButton("上一张")
 
         self.enlarge_image = QPushButton("放大")
+        self.transform_image = QPushButton("旋转")
         self.shrink_image = QPushButton("缩小")
         self.next_image = QPushButton("下一张")
 
         btn_layout.addWidget(self.prev_image)
         btn_layout.addWidget(self.enlarge_image)
+        btn_layout.addWidget(self.transform_image)
         btn_layout.addWidget(self.shrink_image)
         btn_layout.addWidget(self.next_image)
 
@@ -95,6 +97,7 @@ class MainWindow(QWidget):
         #信号-槽函数连接器
         self.prev_image.clicked.connect(self.onPrevImage)
         self.next_image.clicked.connect(self.onNextImage)
+        self.transform_image.clicked.connect(self.onTransformImage)
         self.enlarge_image.clicked.connect(self.onEnlarge)
         self.shrink_image.clicked.connect(self.onShrink)
 
@@ -165,6 +168,12 @@ class MainWindow(QWidget):
         self.setTitleWithImageInfo(
             self.resource_manager.getResource().current())
 
+    def onTransformImage(self):
+        if self.resource_manager is None or len(self.resource_manager.getResource()) == 0:
+            return
+        
+        self.image_view.rotate()
+    
     def onReloadImage(self, image_path):
         if self.resource_manager is None or len(self.resource_manager.getResource()) == 0:
             return
@@ -192,7 +201,13 @@ class MainWindow(QWidget):
 
         if a0.type() == QEvent.FileOpen:
             QMessageBox.information(self, "打开", a0.file())
-
+        
+        if isinstance(a0, QNativeGestureEvent):
+            if a0.value() > 0.01:
+                self.onEnlarge()
+            elif a0.value() < -0.01:
+                self.onShrink()
+            
         return super().event(a0)
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:

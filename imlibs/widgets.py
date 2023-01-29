@@ -1,6 +1,7 @@
+from collections import defaultdict
 from PyQt5.QtCore import QSize, QRect, Qt
 from PyQt5.QtWidgets import QWidget, QScrollArea, QMessageBox, QDialog, QLineEdit, QGridLayout, QLabel, QDialogButtonBox, QApplication, QRadioButton
-from PyQt5.QtGui import QImage, QPainter
+from PyQt5.QtGui import QImage, QPainter, QTransform
 
 from .config import CONFIG
 
@@ -18,7 +19,8 @@ class ImageView(QWidget):
         self.currentScaleIndex = -1
         self.scroll_area = parent
         self.top_widget = top_widget
-        self.ratios = dict()
+        self.ratios = defaultdict(dict) # 0 or 90
+        self.degree = 0
         self.setImage(image_file)
 
     def setImage(self, image_file: str):
@@ -75,7 +77,7 @@ class ImageView(QWidget):
 
     def autoAdjustImageSize(self, resize=False):
         if resize:
-            self.ratios = dict()
+            self.ratios = defaultdict(dict)
             scale = max(self.image.width() / self.size().width(),
                         self.image.height() / self.size().height())
             if self.normalScaleIndex != -1:
@@ -103,12 +105,18 @@ class ImageView(QWidget):
         if self.image.isNull():
             return
         
+        transform = QTransform()
+        transform.rotate(self.degree)
+        transformed_image = self.image.transformed(transform)
+        
         if scale != 1:
-            self.scaled_image = self.image.scaled(QSize(int(self.image.width(
+            self.scaled_image = transformed_image.scaled(QSize(int(self.image.width(
             ) / scale), int(self.image.height() / scale)), Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
 
-        if scale in self.ratios:
-            width, height = self.ratios[scale]
+        hw = 0 if self.degree % 180 == 0 else 1
+        
+        if hw in self.ratios and scale in self.ratios[hw]:
+            width, height = self.ratios[hw][scale]
         else:
             if self.currentScaleIndex < self.normalScaleIndex:
                 # 比正常都要大时，扩大当前画布尺寸
@@ -117,11 +125,9 @@ class ImageView(QWidget):
             else:
                 width = self.top_widget.size().width()
                 height = self.top_widget.size().height() - 60
-            self.ratios[scale] = (width, height)
+            self.ratios[hw][scale] = (width, height)
         
         self.resize(width, height)
-        
-        
         self.setGeometry(0, 0, width, height)
 
         self.image_x = int(
@@ -131,8 +137,13 @@ class ImageView(QWidget):
 
         self.repaint()
 
+    def rotate(self):
+        self.degree = (self.degree + 90) % 360
+        
+        self.autoAdjustImageSize()
+    
     def paintEvent(self, _) -> None:
-        if self.image.isNull():
+        if self.scaled_image.isNull():
             return
         painter = QPainter()
         painter.begin(self)
