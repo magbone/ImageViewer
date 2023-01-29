@@ -104,7 +104,7 @@ class MainWindow(QWidget):
         self.setGeometry(0, 0, self.size().width(), self.size().height())
         self.main_layout.setGeometry(
             QRect(0, 0, self.size().width(), self.size().height()))
-        self.image_view.autoAdjustImageSize()
+        self.image_view.autoAdjustImageSize(True)
         self.setTitleWithImageInfo(self.resource_manager.getResource().current())
         super().resizeEvent(a0)
 
@@ -183,8 +183,10 @@ class MainWindow(QWidget):
         width, height = self.image_view.orignalSize().width(
         ), self.image_view.orignalSize().width()
         ratio = int(self.image_view.getCurrentRatio() * 100)
+        total = len(self.resource_manager.getResource())
+        index = self.resource_manager.getResource().index()
         self.setWindowTitle(
-            f"""图片查看器({image_file}) {width}x{height} 缩放比例:{ratio}%""")
+            f"""图片查看器({image_file}) {width}x{height} 缩放比例:{ratio}% ({index}/{total})""")
 
     def event(self, a0: QEvent) -> bool:
 

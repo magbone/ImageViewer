@@ -18,6 +18,7 @@ class ImageView(QWidget):
         self.currentScaleIndex = -1
         self.scroll_area = parent
         self.top_widget = top_widget
+        self.ratios = dict()
         self.setImage(image_file)
 
     def setImage(self, image_file: str):
@@ -38,7 +39,7 @@ class ImageView(QWidget):
                                 self.top_widget.size().height() - 60)
         self.scroll_area.setGeometry(0, 0, self.top_widget.size().width(),
                                      self.top_widget.size().height() - 60)
-        self.autoAdjustImageSize()
+        self.autoAdjustImageSize(True)
 
     def orignalSize(self):
         return self.orignal_size
@@ -67,7 +68,14 @@ class ImageView(QWidget):
         return True
 
     def getCurrentScale(self):
-        if self.normalSize:  # 处于正常窗口最大情况(非缩放状态)
+        return self.scales[self.currentScaleIndex]
+
+    def getCurrentRatio(self):
+        return 1 / self.getCurrentScale()
+
+    def autoAdjustImageSize(self, resize=False):
+        if resize:
+            self.ratios = dict()
             scale = max(self.image.width() / self.size().width(),
                         self.image.height() / self.size().height())
             if self.normalScaleIndex != -1:
@@ -83,13 +91,7 @@ class ImageView(QWidget):
                 self.scales.insert(self.normalScaleIndex, scale)
 
             self.currentScaleIndex = self.normalScaleIndex
-
-        return self.scales[self.currentScaleIndex]
-
-    def getCurrentRatio(self):
-        return 1 / self.getCurrentScale()
-
-    def autoAdjustImageSize(self):
+            
         scale = self.getCurrentScale()
 
         self.adjustImageSize(scale)
@@ -100,20 +102,26 @@ class ImageView(QWidget):
         """
         if self.image.isNull():
             return
-
+        
         if scale != 1:
             self.scaled_image = self.image.scaled(QSize(int(self.image.width(
             ) / scale), int(self.image.height() / scale)), Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
 
-        if self.currentScaleIndex < self.normalScaleIndex:
-            # 比正常都要大时，扩大当前画布尺寸
-            width = max(self.scaled_image.width(), self.size().width())
-            height = max(self.scaled_image.height(), self.size().height())
+        if scale in self.ratios:
+            width, height = self.ratios[scale]
         else:
-            width = self.top_widget.size().width()
-            height = self.top_widget.size().height() - 60
-
+            if self.currentScaleIndex < self.normalScaleIndex:
+                # 比正常都要大时，扩大当前画布尺寸
+                width = max(self.scaled_image.width(), self.size().width())
+                height = max(self.scaled_image.height(), self.size().height())
+            else:
+                width = self.top_widget.size().width()
+                height = self.top_widget.size().height() - 60
+            self.ratios[scale] = (width, height)
+        
         self.resize(width, height)
+        
+        
         self.setGeometry(0, 0, width, height)
 
         self.image_x = int(
